@@ -2,105 +2,1094 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<title>Мелодия</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Интерактивный музыкальный плеер с визуализатором — играйте классические мелодии прямо в браузере">
+<meta name="theme-color" content="#1e3c72">
+<title>🎵 Мелодия — Интерактивный музыкальный плеер</title>
 <style>
-  body {
+  :root {
+    --bg-1: #0f2027;
+    --bg-2: #203a43;
+    --bg-3: #2c5364;
+    --accent: #ffd166;
+    --accent-2: #ef476f;
+    --accent-3: #06d6a0;
+    --text: #ffffff;
+    --text-dim: rgba(255, 255, 255, 0.75);
+    --glass: rgba(255, 255, 255, 0.08);
+    --glass-border: rgba(255, 255, 255, 0.18);
+    --shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+  }
+
+  [data-theme="light"] {
+    --bg-1: #fdfbfb;
+    --bg-2: #ebedee;
+    --bg-3: #c9d6ff;
+    --text: #1a1a2e;
+    --text-dim: rgba(26, 26, 46, 0.75);
+    --glass: rgba(255, 255, 255, 0.5);
+    --glass-border: rgba(255, 255, 255, 0.7);
+    --shadow: 0 8px 32px rgba(31, 38, 135, 0.15);
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
     margin: 0;
+    padding: 0;
     min-height: 100vh;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: var(--text);
+    overflow-x: hidden;
+  }
+
+  body {
+    background: linear-gradient(135deg, var(--bg-1), var(--bg-2), var(--bg-3));
+    background-size: 400% 400%;
+    animation: gradientShift 18s ease infinite;
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
-    font-family: system-ui, sans-serif;
-    background: linear-gradient(135deg, #1e3c72, #2a5298);
-    color: #fff;
+    padding: 2rem 1rem;
+    transition: color 0.3s;
   }
-  h1 { font-size: 2rem; margin-bottom: 1rem; }
-  button {
-    padding: 0.8rem 1.6rem;
-    font-size: 1.1rem;
-    border: none;
-    border-radius: 8px;
-    background: #ffd166;
-    color: #1e3c72;
+
+  @keyframes gradientShift {
+    0%   { background-position: 0% 50%; }
+    50%  { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  /* Floating animated background notes */
+  .bg-notes {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+    z-index: 0;
+  }
+  .bg-note {
+    position: absolute;
+    font-size: 2rem;
+    opacity: 0.08;
+    animation: floatUp linear infinite;
+    user-select: none;
+  }
+  @keyframes floatUp {
+    0%   { transform: translateY(110vh) rotate(0deg); opacity: 0; }
+    10%  { opacity: 0.12; }
+    90%  { opacity: 0.12; }
+    100% { transform: translateY(-20vh) rotate(360deg); opacity: 0; }
+  }
+
+  .container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 720px;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  h1 {
+    font-size: clamp(1.5rem, 4vw, 2.4rem);
+    margin: 0;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(90deg, var(--accent), var(--accent-3));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  .theme-toggle {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    color: var(--text);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
     cursor: pointer;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    font-size: 1.2rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+    transition: transform 0.2s, background 0.2s;
   }
-  button:hover { background: #ffe39b; }
-  #status { margin-top: 1rem; opacity: 0.8; }
+  .theme-toggle:hover { transform: rotate(20deg) scale(1.05); }
+
+  .card {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 20px;
+    padding: 1.5rem;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    box-shadow: var(--shadow);
+  }
+
+  /* Now playing */
+  .now-playing {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    align-items: center;
+    text-align: center;
+  }
+
+  .track-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0;
+  }
+  .track-meta {
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    margin: 0;
+  }
+
+  /* Visualizer */
+  .visualizer {
+    width: 100%;
+    height: 140px;
+    display: flex;
+    align-items: flex-end;
+    justify-content: center;
+    gap: 3px;
+    padding: 0.5rem;
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.18);
+  }
+  .bar {
+    flex: 1;
+    max-width: 14px;
+    min-width: 3px;
+    height: 4px;
+    background: linear-gradient(180deg, var(--accent-2), var(--accent), var(--accent-3));
+    border-radius: 4px;
+    transition: height 0.07s ease-out;
+    box-shadow: 0 0 6px rgba(255, 209, 102, 0.4);
+  }
+
+  /* Note display */
+  .current-note {
+    font-size: 2.5rem;
+    font-weight: 700;
+    min-height: 3.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.4rem;
+    transition: transform 0.1s;
+  }
+  .current-note.pulse {
+    animation: pulse 0.2s ease;
+  }
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50%      { transform: scale(1.15); }
+  }
+
+  /* Controls */
+  .controls {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+  }
+
+  button {
+    padding: 0.7rem 1.2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    border: 1px solid var(--glass-border);
+    border-radius: 12px;
+    background: var(--glass);
+    color: var(--text);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    backdrop-filter: blur(8px);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+  }
+  button:hover:not(:disabled) {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.15);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  }
+  button:active:not(:disabled) { transform: translateY(0); }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  button.primary {
+    background: linear-gradient(135deg, var(--accent), var(--accent-2));
+    color: #1a1a2e;
+    border: none;
+    padding: 0.9rem 1.8rem;
+    font-size: 1.1rem;
+  }
+  button.primary:hover:not(:disabled) {
+    box-shadow: 0 8px 24px rgba(239, 71, 105, 0.4);
+  }
+
+  /* Progress */
+  .progress-wrap {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-variant-numeric: tabular-nums;
+    font-size: 0.85rem;
+    color: var(--text-dim);
+  }
+  .progress {
+    flex: 1;
+    height: 6px;
+    background: rgba(0, 0, 0, 0.25);
+    border-radius: 3px;
+    overflow: hidden;
+  }
+  .progress-bar {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(90deg, var(--accent-3), var(--accent));
+    transition: width 0.1s linear;
+    border-radius: 3px;
+  }
+
+  /* Settings */
+  .settings {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 1rem;
+  }
+  .setting {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .setting label {
+    font-size: 0.85rem;
+    color: var(--text-dim);
+    font-weight: 500;
+    display: flex;
+    justify-content: space-between;
+  }
+  .setting select,
+  .setting input[type="range"] {
+    width: 100%;
+    padding: 0.5rem;
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 8px;
+    color: var(--text);
+    font-size: 0.95rem;
+    accent-color: var(--accent);
+  }
+  .setting select option { background: var(--bg-2); color: var(--text); }
+
+  input[type="range"] {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 6px;
+    background: rgba(0,0,0,0.25);
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--accent);
+    cursor: pointer;
+    border: none;
+  }
+
+  /* Status */
+  #status {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.9rem;
+    min-height: 1.2em;
+  }
+
+  /* Keyboard hint */
+  .kbd-hint {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+  }
+  kbd {
+    background: var(--glass);
+    border: 1px solid var(--glass-border);
+    border-radius: 4px;
+    padding: 0.1em 0.4em;
+    font-family: 'SF Mono', Monaco, monospace;
+    font-size: 0.8em;
+  }
+
+  footer {
+    text-align: center;
+    color: var(--text-dim);
+    font-size: 0.8rem;
+    margin-top: 0.5rem;
+  }
+
+  @media (max-width: 540px) {
+    body { padding: 1rem 0.75rem; }
+    .card { padding: 1rem; border-radius: 16px; }
+    .visualizer { height: 100px; }
+    .current-note { font-size: 2rem; }
+    button.primary { padding: 0.8rem 1.4rem; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    body, .bg-note, .current-note.pulse { animation: none !important; }
+    * { transition: none !important; }
+  }
 </style>
 </head>
 <body>
-  <h1>🎵 Мелодия при открытии</h1>
-  <button id="play">▶ Проиграть снова</button>
-  <p id="status">Нажмите кнопку или подождите...</p>
+
+<div class="bg-notes" aria-hidden="true" id="bgNotes"></div>
+
+<div class="container">
+  <header>
+    <h1>🎵 Мелодия</h1>
+    <button class="theme-toggle" id="themeToggle" aria-label="Сменить тему" title="Сменить тему">🌙</button>
+  </header>
+
+  <section class="card now-playing">
+    <div>
+      <p class="track-title" id="trackTitle">Ода к радости</p>
+      <p class="track-meta" id="trackMeta">Людвиг ван Бетховен · 9-я симфония</p>
+    </div>
+
+    <div class="current-note" id="currentNote">♪</div>
+
+    <div class="visualizer" id="visualizer" aria-hidden="true"></div>
+
+    <div class="progress-wrap">
+      <span id="timeCurrent">0:00</span>
+      <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+      <span id="timeTotal">0:00</span>
+    </div>
+
+    <div class="controls">
+      <button id="prev" aria-label="Предыдущая мелодия" title="Предыдущая (←)">⏮</button>
+      <button class="primary" id="play" aria-label="Воспроизвести">▶ Играть</button>
+      <button id="stop" aria-label="Остановить" title="Стоп">⏹</button>
+      <button id="next" aria-label="Следующая мелодия" title="Следующая (→)">⏭</button>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="settings">
+      <div class="setting">
+        <label for="melodySelect">Мелодия</label>
+        <select id="melodySelect"></select>
+      </div>
+      <div class="setting">
+        <label for="instrument">Инструмент</label>
+        <select id="instrument">
+          <option value="piano">🎹 Пианино</option>
+          <option value="sine">🌙 Флейта</option>
+          <option value="triangle" selected>🎺 Труба</option>
+          <option value="square">🎮 8-bit</option>
+          <option value="sawtooth">🎸 Гитара</option>
+          <option value="organ">⛪ Орган</option>
+        </select>
+      </div>
+      <div class="setting">
+        <label for="tempo">Темп <span id="tempoVal">100%</span></label>
+        <input type="range" id="tempo" min="50" max="200" value="100" step="5">
+      </div>
+      <div class="setting">
+        <label for="volume">Громкость <span id="volumeVal">60%</span></label>
+        <input type="range" id="volume" min="0" max="100" value="60">
+      </div>
+    </div>
+  </section>
+
+  <p id="status" role="status" aria-live="polite">Готов к игре. Нажмите ▶ или пробел.</p>
+
+  <p class="kbd-hint">
+    <kbd>Space</kbd> играть/пауза · <kbd>S</kbd> стоп · <kbd>←</kbd>/<kbd>→</kbd> переключение · <kbd>T</kbd> тема
+  </p>
+
+  <footer>Сделано с ♥ · Web Audio API</footer>
+</div>
 
 <script>
-const notes = {
-  C4: 261.63, D4: 293.66, E4: 329.63, F4: 349.23,
-  G4: 392.00, A4: 440.00, B4: 493.88, C5: 523.25,
-  D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99
-};
+'use strict';
 
-// "Ода к радости" - Бетховен
-const melody = [
-  ['E4', 0.5], ['E4', 0.5], ['F4', 0.5], ['G4', 0.5],
-  ['G4', 0.5], ['F4', 0.5], ['E4', 0.5], ['D4', 0.5],
-  ['C4', 0.5], ['C4', 0.5], ['D4', 0.5], ['E4', 0.5],
-  ['E4', 0.75], ['D4', 0.25], ['D4', 1.0],
-  ['E4', 0.5], ['E4', 0.5], ['F4', 0.5], ['G4', 0.5],
-  ['G4', 0.5], ['F4', 0.5], ['E4', 0.5], ['D4', 0.5],
-  ['C4', 0.5], ['C4', 0.5], ['D4', 0.5], ['E4', 0.5],
-  ['D4', 0.75], ['C4', 0.25], ['C4', 1.0]
+/* ===========================
+   Музыкальная теория
+   =========================== */
+// Полная карта частот для нескольких октав
+const NOTE_FREQUENCIES = (() => {
+  const names = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+  const map = {};
+  for (let octave = 2; octave <= 6; octave++) {
+    for (let i = 0; i < 12; i++) {
+      // A4 = 440 Hz, MIDI 69
+      const midi = (octave + 1) * 12 + i;
+      const freq = 440 * Math.pow(2, (midi - 69) / 12);
+      map[names[i] + octave] = freq;
+    }
+  }
+  return map;
+})();
+
+/* ===========================
+   Мелодии
+   формат: [нота, длительность в долях]
+   'R' — пауза (rest)
+   =========================== */
+const MELODIES = [
+  {
+    title: 'Ода к радости',
+    composer: 'Л. ван Бетховен',
+    bpm: 120,
+    notes: [
+      ['E4', 1], ['E4', 1], ['F4', 1], ['G4', 1],
+      ['G4', 1], ['F4', 1], ['E4', 1], ['D4', 1],
+      ['C4', 1], ['C4', 1], ['D4', 1], ['E4', 1],
+      ['E4', 1.5], ['D4', 0.5], ['D4', 2],
+      ['E4', 1], ['E4', 1], ['F4', 1], ['G4', 1],
+      ['G4', 1], ['F4', 1], ['E4', 1], ['D4', 1],
+      ['C4', 1], ['C4', 1], ['D4', 1], ['E4', 1],
+      ['D4', 1.5], ['C4', 0.5], ['C4', 2]
+    ]
+  },
+  {
+    title: 'К Элизе',
+    composer: 'Л. ван Бетховен',
+    bpm: 140,
+    notes: [
+      ['E5', 0.5], ['D#5', 0.5], ['E5', 0.5], ['D#5', 0.5],
+      ['E5', 0.5], ['B4', 0.5], ['D5', 0.5], ['C5', 0.5],
+      ['A4', 1], ['R', 0.5], ['C4', 0.5], ['E4', 0.5], ['A4', 0.5],
+      ['B4', 1], ['R', 0.5], ['E4', 0.5], ['G#4', 0.5], ['B4', 0.5],
+      ['C5', 1], ['R', 0.5], ['E4', 0.5],
+      ['E5', 0.5], ['D#5', 0.5], ['E5', 0.5], ['D#5', 0.5],
+      ['E5', 0.5], ['B4', 0.5], ['D5', 0.5], ['C5', 0.5],
+      ['A4', 1.5]
+    ]
+  },
+  {
+    title: 'Маленькая ночная серенада',
+    composer: 'В. А. Моцарт',
+    bpm: 130,
+    notes: [
+      ['G4', 1], ['D4', 1], ['G4', 0.5], ['D4', 0.5], ['G4', 1],
+      ['B4', 0.5], ['A4', 0.5], ['G4', 0.5], ['A4', 0.5], ['B4', 0.5], ['G4', 0.5],
+      ['D5', 1], ['D5', 0.5], ['E5', 0.5], ['D5', 1],
+      ['C5', 0.5], ['B4', 0.5], ['A4', 0.5], ['B4', 0.5], ['C5', 0.5], ['A4', 0.5],
+      ['G4', 2]
+    ]
+  },
+  {
+    title: 'Прелюдия до мажор',
+    composer: 'И. С. Бах',
+    bpm: 90,
+    notes: [
+      ['C4', 0.5], ['E4', 0.5], ['G4', 0.5], ['C5', 0.5], ['E5', 0.5], ['G4', 0.5], ['C5', 0.5], ['E5', 0.5],
+      ['C4', 0.5], ['D4', 0.5], ['A4', 0.5], ['D5', 0.5], ['F5', 0.5], ['A4', 0.5], ['D5', 0.5], ['F5', 0.5],
+      ['B3', 0.5], ['D4', 0.5], ['G4', 0.5], ['D5', 0.5], ['F5', 0.5], ['G4', 0.5], ['D5', 0.5], ['F5', 0.5],
+      ['C4', 0.5], ['E4', 0.5], ['G4', 0.5], ['C5', 0.5], ['E5', 0.5], ['G4', 0.5], ['C5', 0.5], ['E5', 0.5]
+    ]
+  },
+  {
+    title: 'Лунная соната (тема)',
+    composer: 'Л. ван Бетховен',
+    bpm: 60,
+    notes: [
+      ['C#4', 0.5], ['E4', 0.5], ['G#4', 0.5], ['C#4', 0.5], ['E4', 0.5], ['G#4', 0.5],
+      ['C#4', 0.5], ['E4', 0.5], ['G#4', 0.5], ['C#4', 0.5], ['E4', 0.5], ['G#4', 0.5],
+      ['B3', 0.5], ['D#4', 0.5], ['G#4', 0.5], ['B3', 0.5], ['D#4', 0.5], ['G#4', 0.5],
+      ['C#4', 0.5], ['E4', 0.5], ['A4', 0.5], ['C#4', 0.5], ['E4', 0.5], ['A4', 0.5]
+    ]
+  },
+  {
+    title: 'Канон Пахельбеля',
+    composer: 'И. Пахельбель',
+    bpm: 80,
+    notes: [
+      ['D4', 2], ['A3', 2], ['B3', 2], ['F#3', 2],
+      ['G3', 2], ['D3', 2], ['G3', 2], ['A3', 2],
+      ['F#4', 1], ['E4', 1], ['D4', 1], ['C#4', 1],
+      ['B3', 1], ['A3', 1], ['B3', 1], ['C#4', 1],
+      ['D4', 1], ['C#4', 1], ['B3', 1], ['A3', 1],
+      ['G3', 1], ['F#3', 1], ['G3', 1], ['E3', 1]
+    ]
+  },
+  {
+    title: 'Twinkle Twinkle',
+    composer: 'Народная',
+    bpm: 110,
+    notes: [
+      ['C4', 1], ['C4', 1], ['G4', 1], ['G4', 1],
+      ['A4', 1], ['A4', 1], ['G4', 2],
+      ['F4', 1], ['F4', 1], ['E4', 1], ['E4', 1],
+      ['D4', 1], ['D4', 1], ['C4', 2]
+    ]
+  },
+  {
+    title: 'Happy Birthday',
+    composer: 'П. и М. Хилл',
+    bpm: 120,
+    notes: [
+      ['C4', 0.75], ['C4', 0.25], ['D4', 1], ['C4', 1], ['F4', 1], ['E4', 2],
+      ['C4', 0.75], ['C4', 0.25], ['D4', 1], ['C4', 1], ['G4', 1], ['F4', 2],
+      ['C4', 0.75], ['C4', 0.25], ['C5', 1], ['A4', 1], ['F4', 1], ['E4', 1], ['D4', 2],
+      ['A#4', 0.75], ['A#4', 0.25], ['A4', 1], ['F4', 1], ['G4', 1], ['F4', 2]
+    ]
+  }
 ];
 
-let ctx;
-
-function playMelody() {
-  if (!ctx) ctx = new (window.AudioContext || window.webkitAudioContext)();
-  if (ctx.state === 'suspended') ctx.resume();
-
-  let t = ctx.currentTime + 0.05;
-  for (const [name, dur] of melody) {
-    const freq = notes[name];
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
-    osc.type = 'triangle';
-    osc.frequency.value = freq;
-    gain.gain.setValueAtTime(0, t);
-    gain.gain.linearRampToValueAtTime(0.25, t + 0.02);
-    gain.gain.linearRampToValueAtTime(0, t + dur * 0.95);
-    osc.connect(gain).connect(ctx.destination);
-    osc.start(t);
-    osc.stop(t + dur);
-    t += dur;
+/* ===========================
+   Аудио-движок
+   =========================== */
+class AudioEngine {
+  constructor() {
+    this.ctx = null;
+    this.masterGain = null;
+    this.analyser = null;
+    this.activeNodes = [];
+    this.scheduled = [];
+    this.volume = 0.6;
   }
-  document.getElementById('status').textContent = 'Играет 🎶';
-  setTimeout(() => {
-    document.getElementById('status').textContent = 'Готово.';
-  }, (t - ctx.currentTime) * 1000);
+
+  ensureContext() {
+    if (!this.ctx) {
+      this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+      this.masterGain = this.ctx.createGain();
+      this.masterGain.gain.value = this.volume;
+
+      this.analyser = this.ctx.createAnalyser();
+      this.analyser.fftSize = 64;
+      this.analyser.smoothingTimeConstant = 0.7;
+
+      this.masterGain.connect(this.analyser);
+      this.analyser.connect(this.ctx.destination);
+    }
+    if (this.ctx.state === 'suspended') this.ctx.resume();
+    return this.ctx;
+  }
+
+  setVolume(v) {
+    this.volume = v;
+    if (this.masterGain) {
+      this.masterGain.gain.setTargetAtTime(v, this.ctx.currentTime, 0.02);
+    }
+  }
+
+  /* Создание ноты с разными "инструментами" */
+  scheduleNote(freq, startTime, duration, instrument) {
+    const ctx = this.ctx;
+    const noteGain = ctx.createGain();
+    noteGain.connect(this.masterGain);
+
+    const attack = 0.015;
+    const release = Math.min(0.25, duration * 0.4);
+    const sustainLevel = 0.85;
+
+    noteGain.gain.setValueAtTime(0, startTime);
+    noteGain.gain.linearRampToValueAtTime(1, startTime + attack);
+    noteGain.gain.setValueAtTime(sustainLevel, startTime + duration - release);
+    noteGain.gain.linearRampToValueAtTime(0, startTime + duration);
+
+    const oscillators = [];
+
+    const addOsc = (type, freqMul, gainMul, detune = 0) => {
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.type = type;
+      osc.frequency.value = freq * freqMul;
+      osc.detune.value = detune;
+      g.gain.value = gainMul;
+      osc.connect(g).connect(noteGain);
+      osc.start(startTime);
+      osc.stop(startTime + duration + 0.05);
+      oscillators.push(osc);
+    };
+
+    switch (instrument) {
+      case 'piano': {
+        // Имитация пианино: фундаментальная + гармоники + быстрое затухание
+        addOsc('triangle', 1, 0.35);
+        addOsc('sine', 2, 0.15);
+        addOsc('sine', 3, 0.08);
+        addOsc('sine', 4, 0.04);
+        // Перенастройка огибающей для пианино — более быстрый decay
+        noteGain.gain.cancelScheduledValues(startTime);
+        noteGain.gain.setValueAtTime(0, startTime);
+        noteGain.gain.linearRampToValueAtTime(1, startTime + 0.005);
+        noteGain.gain.exponentialRampToValueAtTime(0.001, startTime + Math.min(duration, 1.5));
+        break;
+      }
+      case 'organ': {
+        addOsc('sine', 1, 0.35);
+        addOsc('sine', 2, 0.2);
+        addOsc('sine', 3, 0.12);
+        addOsc('sine', 4, 0.08);
+        addOsc('triangle', 0.5, 0.1);
+        break;
+      }
+      case 'sine':
+        addOsc('sine', 1, 0.5);
+        addOsc('sine', 2, 0.05);
+        break;
+      case 'square':
+        addOsc('square', 1, 0.25);
+        break;
+      case 'sawtooth':
+        addOsc('sawtooth', 1, 0.25);
+        addOsc('sawtooth', 1, 0.18, 8);
+        addOsc('sawtooth', 1, 0.18, -8);
+        break;
+      case 'triangle':
+      default:
+        addOsc('triangle', 1, 0.45);
+        addOsc('triangle', 2, 0.08);
+        break;
+    }
+
+    this.scheduled.push({ noteGain, oscillators, endTime: startTime + duration });
+  }
+
+  stopAll() {
+    if (!this.ctx) return;
+    const now = this.ctx.currentTime;
+    for (const s of this.scheduled) {
+      try {
+        s.noteGain.gain.cancelScheduledValues(now);
+        s.noteGain.gain.setTargetAtTime(0, now, 0.02);
+        for (const o of s.oscillators) {
+          try { o.stop(now + 0.1); } catch (_) {}
+        }
+      } catch (_) {}
+    }
+    this.scheduled = [];
+  }
+
+  getFrequencyData(arr) {
+    if (this.analyser) this.analyser.getByteFrequencyData(arr);
+  }
 }
 
-document.getElementById('play').addEventListener('click', playMelody);
+/* ===========================
+   Плеер
+   =========================== */
+class Player {
+  constructor(engine) {
+    this.engine = engine;
+    this.currentIdx = 0;
+    this.isPlaying = false;
+    this.startedAt = 0;
+    this.totalDuration = 0;
+    this.tempoFactor = 1;
+    this.instrument = 'triangle';
+    this.scheduledNotes = []; // {time, note, duration}
+    this.rafId = null;
+    this.onProgress = () => {};
+    this.onNoteChange = () => {};
+    this.onEnd = () => {};
+  }
 
-// Попытка автозапуска. Браузеры обычно требуют клика —
-// в этом случае мелодия проиграется при первом взаимодействии.
+  setMelody(idx) {
+    this.currentIdx = (idx + MELODIES.length) % MELODIES.length;
+  }
+
+  current() {
+    return MELODIES[this.currentIdx];
+  }
+
+  computeBeatDuration() {
+    const bpm = this.current().bpm * this.tempoFactor;
+    return 60 / bpm; // seconds per beat (quarter note)
+  }
+
+  computeTotalDuration() {
+    const beatDur = this.computeBeatDuration();
+    let total = 0;
+    for (const [, beats] of this.current().notes) total += beats * beatDur * 0.5;
+    return total;
+  }
+
+  play() {
+    this.stop(false);
+    const ctx = this.engine.ensureContext();
+    const beatDur = this.computeBeatDuration();
+    // Используем 0.5 — потому что в данных длительности в "восьмых"-долях
+    const unit = beatDur * 0.5;
+
+    let t = ctx.currentTime + 0.08;
+    this.startedAt = t;
+    this.scheduledNotes = [];
+
+    const notes = this.current().notes;
+    for (const [name, beats] of notes) {
+      const dur = beats * unit;
+      if (name !== 'R') {
+        const freq = NOTE_FREQUENCIES[name];
+        if (freq) {
+          this.engine.scheduleNote(freq, t, dur * 0.95, this.instrument);
+        }
+      }
+      this.scheduledNotes.push({ time: t, name, duration: dur });
+      t += dur;
+    }
+    this.totalDuration = t - this.startedAt;
+    this.isPlaying = true;
+
+    this._tick();
+    // Завершение
+    this._endTimer = setTimeout(() => {
+      this.isPlaying = false;
+      this.onEnd();
+    }, this.totalDuration * 1000 + 200);
+  }
+
+  _tick() {
+    if (!this.isPlaying) return;
+    const ctx = this.engine.ctx;
+    const elapsed = ctx.currentTime - this.startedAt;
+    const progress = Math.min(1, elapsed / this.totalDuration);
+    this.onProgress(progress, elapsed, this.totalDuration);
+
+    // Найти текущую играющую ноту
+    let currentNote = null;
+    for (const n of this.scheduledNotes) {
+      const localT = ctx.currentTime;
+      if (localT >= n.time && localT < n.time + n.duration) {
+        currentNote = n;
+        break;
+      }
+    }
+    this.onNoteChange(currentNote);
+
+    this.rafId = requestAnimationFrame(() => this._tick());
+  }
+
+  stop(triggerCallback = true) {
+    this.isPlaying = false;
+    if (this.rafId) cancelAnimationFrame(this.rafId);
+    if (this._endTimer) clearTimeout(this._endTimer);
+    this.engine.stopAll();
+    this.onProgress(0, 0, this.totalDuration);
+    this.onNoteChange(null);
+    if (triggerCallback) this.onEnd();
+  }
+
+  setTempo(factor) { this.tempoFactor = factor; }
+  setInstrument(inst) { this.instrument = inst; }
+}
+
+/* ===========================
+   UI
+   =========================== */
+const engine = new AudioEngine();
+const player = new Player(engine);
+
+const $ = id => document.getElementById(id);
+const playBtn = $('play');
+const stopBtn = $('stop');
+const prevBtn = $('prev');
+const nextBtn = $('next');
+const melodySelect = $('melodySelect');
+const instrumentSelect = $('instrument');
+const tempoInput = $('tempo');
+const tempoVal = $('tempoVal');
+const volumeInput = $('volume');
+const volumeVal = $('volumeVal');
+const trackTitle = $('trackTitle');
+const trackMeta = $('trackMeta');
+const currentNoteEl = $('currentNote');
+const statusEl = $('status');
+const progressBar = $('progressBar');
+const timeCurrent = $('timeCurrent');
+const timeTotal = $('timeTotal');
+const themeToggle = $('themeToggle');
+const visualizer = $('visualizer');
+
+// Заполнить selector мелодий
+MELODIES.forEach((m, i) => {
+  const opt = document.createElement('option');
+  opt.value = i;
+  opt.textContent = m.title;
+  melodySelect.appendChild(opt);
+});
+
+// Создать столбцы визуализатора
+const BAR_COUNT = 28;
+const bars = [];
+for (let i = 0; i < BAR_COUNT; i++) {
+  const b = document.createElement('div');
+  b.className = 'bar';
+  visualizer.appendChild(b);
+  bars.push(b);
+}
+
+// Форматирование времени
+function fmtTime(s) {
+  s = Math.max(0, Math.floor(s));
+  const m = Math.floor(s / 60);
+  const sec = s % 60;
+  return `${m}:${sec.toString().padStart(2, '0')}`;
+}
+
+function updateTrackInfo() {
+  const m = player.current();
+  trackTitle.textContent = m.title;
+  trackMeta.textContent = `${m.composer} · ${m.bpm} BPM`;
+  melodySelect.value = player.currentIdx;
+  timeTotal.textContent = fmtTime(player.computeTotalDuration());
+  timeCurrent.textContent = '0:00';
+  progressBar.style.width = '0%';
+}
+
+function setPlayingUI(playing) {
+  playBtn.innerHTML = playing ? '⏸ Пауза' : '▶ Играть';
+  playBtn.setAttribute('aria-label', playing ? 'Пауза' : 'Воспроизвести');
+}
+
+// События плеера
+player.onProgress = (p, elapsed, total) => {
+  progressBar.style.width = (p * 100) + '%';
+  timeCurrent.textContent = fmtTime(elapsed);
+  timeTotal.textContent = fmtTime(total);
+};
+
+let lastNoteName = null;
+player.onNoteChange = (note) => {
+  const name = note ? note.name : null;
+  if (name !== lastNoteName) {
+    lastNoteName = name;
+    if (name && name !== 'R') {
+      currentNoteEl.textContent = '♪ ' + name;
+      currentNoteEl.classList.remove('pulse');
+      // restart animation
+      void currentNoteEl.offsetWidth;
+      currentNoteEl.classList.add('pulse');
+    } else if (name === 'R') {
+      currentNoteEl.textContent = '·';
+    }
+  }
+};
+
+player.onEnd = () => {
+  setPlayingUI(false);
+  statusEl.textContent = 'Готово. Нажмите ▶ или выберите другую мелодию.';
+  currentNoteEl.textContent = '♪';
+  progressBar.style.width = '0%';
+  timeCurrent.textContent = fmtTime(0);
+};
+
+// Управление
+function togglePlay() {
+  if (player.isPlaying) {
+    player.stop(true);
+    statusEl.textContent = 'Пауза.';
+  } else {
+    try {
+      player.play();
+      setPlayingUI(true);
+      statusEl.textContent = 'Играет 🎶 — ' + player.current().title;
+    } catch (e) {
+      statusEl.textContent = 'Ошибка: ' + e.message;
+    }
+  }
+}
+
+playBtn.addEventListener('click', togglePlay);
+stopBtn.addEventListener('click', () => {
+  player.stop(true);
+  statusEl.textContent = 'Остановлено.';
+});
+prevBtn.addEventListener('click', () => {
+  const wasPlaying = player.isPlaying;
+  player.stop(false);
+  player.setMelody(player.currentIdx - 1);
+  updateTrackInfo();
+  if (wasPlaying) { player.play(); setPlayingUI(true); statusEl.textContent = 'Играет 🎶 — ' + player.current().title; }
+  else statusEl.textContent = 'Выбрано: ' + player.current().title;
+});
+nextBtn.addEventListener('click', () => {
+  const wasPlaying = player.isPlaying;
+  player.stop(false);
+  player.setMelody(player.currentIdx + 1);
+  updateTrackInfo();
+  if (wasPlaying) { player.play(); setPlayingUI(true); statusEl.textContent = 'Играет 🎶 — ' + player.current().title; }
+  else statusEl.textContent = 'Выбрано: ' + player.current().title;
+});
+
+melodySelect.addEventListener('change', e => {
+  const wasPlaying = player.isPlaying;
+  player.stop(false);
+  player.setMelody(parseInt(e.target.value, 10));
+  updateTrackInfo();
+  if (wasPlaying) { player.play(); setPlayingUI(true); }
+});
+
+instrumentSelect.addEventListener('change', e => {
+  player.setInstrument(e.target.value);
+});
+
+tempoInput.addEventListener('input', e => {
+  const pct = parseInt(e.target.value, 10);
+  tempoVal.textContent = pct + '%';
+  player.setTempo(pct / 100);
+  updateTrackInfo();
+});
+
+volumeInput.addEventListener('input', e => {
+  const pct = parseInt(e.target.value, 10);
+  volumeVal.textContent = pct + '%';
+  engine.setVolume(pct / 100);
+});
+
+// Тема
+function applyTheme(theme) {
+  document.documentElement.setAttribute('data-theme', theme);
+  themeToggle.textContent = theme === 'light' ? '☀️' : '🌙';
+  try { localStorage.setItem('melody-theme', theme); } catch (_) {}
+}
+themeToggle.addEventListener('click', () => {
+  const cur = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+  applyTheme(cur);
+});
+
+// Восстановить тему
+try {
+  const saved = localStorage.getItem('melody-theme');
+  if (saved) applyTheme(saved);
+} catch (_) {}
+
+// Клавиатура
+document.addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT') return;
+  switch (e.code) {
+    case 'Space':
+      e.preventDefault();
+      togglePlay();
+      break;
+    case 'KeyS':
+      player.stop(true);
+      statusEl.textContent = 'Остановлено.';
+      break;
+    case 'ArrowLeft':
+      prevBtn.click();
+      break;
+    case 'ArrowRight':
+      nextBtn.click();
+      break;
+    case 'KeyT':
+      themeToggle.click();
+      break;
+  }
+});
+
+// Визуализатор
+const freqData = new Uint8Array(BAR_COUNT);
+function drawVisualizer() {
+  if (engine.analyser) {
+    const buf = new Uint8Array(engine.analyser.frequencyBinCount);
+    engine.getFrequencyData(buf);
+    for (let i = 0; i < BAR_COUNT; i++) {
+      const idx = Math.floor(i * buf.length / BAR_COUNT);
+      const v = buf[idx] / 255;
+      const h = Math.max(4, v * 130);
+      bars[i].style.height = h + 'px';
+      bars[i].style.opacity = 0.4 + v * 0.6;
+    }
+  } else {
+    // Идеальная "дыхание" анимация когда не играет
+    const t = performance.now() / 600;
+    for (let i = 0; i < BAR_COUNT; i++) {
+      const h = 6 + Math.abs(Math.sin(t + i * 0.3)) * 10;
+      bars[i].style.height = h + 'px';
+      bars[i].style.opacity = 0.4;
+    }
+  }
+  requestAnimationFrame(drawVisualizer);
+}
+drawVisualizer();
+
+// Плавающие ноты на фоне
+(function makeBgNotes() {
+  const container = $('bgNotes');
+  const symbols = ['♪', '♫', '♬', '♩', '𝄞'];
+  for (let i = 0; i < 14; i++) {
+    const el = document.createElement('span');
+    el.className = 'bg-note';
+    el.textContent = symbols[i % symbols.length];
+    el.style.left = (Math.random() * 100) + '%';
+    el.style.fontSize = (1.2 + Math.random() * 2.5) + 'rem';
+    el.style.animationDuration = (12 + Math.random() * 18) + 's';
+    el.style.animationDelay = (-Math.random() * 20) + 's';
+    container.appendChild(el);
+  }
+})();
+
+// Инициализация
+updateTrackInfo();
+
+// Попытка автозапуска (политика браузеров: только после жеста)
 window.addEventListener('load', () => {
-  const tryPlay = () => {
-    playMelody();
-    window.removeEventListener('click', tryPlay);
-    window.removeEventListener('keydown', tryPlay);
+  const tryAutoplay = () => {
+    try {
+      engine.ensureContext();
+      if (engine.ctx.state === 'running' && !player.isPlaying) {
+        player.play();
+        setPlayingUI(true);
+        statusEl.textContent = 'Играет 🎶 — ' + player.current().title;
+      }
+    } catch (_) {}
   };
+
   setTimeout(() => {
     try {
-      playMelody();
+      engine.ensureContext();
+      if (engine.ctx.state === 'running') {
+        player.play();
+        setPlayingUI(true);
+        statusEl.textContent = 'Играет 🎶 — ' + player.current().title;
+      } else {
+        statusEl.textContent = 'Кликните в любом месте, чтобы начать музыку.';
+        const onInteract = () => {
+          tryAutoplay();
+          window.removeEventListener('click', onInteract);
+          window.removeEventListener('keydown', onInteract);
+        };
+        window.addEventListener('click', onInteract, { once: true });
+        window.addEventListener('keydown', onInteract, { once: true });
+      }
     } catch (e) {
-      document.getElementById('status').textContent =
-        'Кликните в любое место, чтобы запустить мелодию.';
-      window.addEventListener('click', tryPlay, { once: true });
-      window.addEventListener('keydown', tryPlay, { once: true });
+      statusEl.textContent = 'Кликните в любом месте, чтобы начать музыку.';
     }
-  }, 200);
+  }, 250);
 });
 </script>
 </body>
