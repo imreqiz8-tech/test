@@ -3,7 +3,6 @@
   "name": "Авто-поднятие резюме hh.ru",
   "version": "1.0.0",
   "description": "Автоматически поднимает резюме на hh.ru каждые 4 часа.",
-  "default_locale": "ru",
   "permissions": [
     "alarms",
     "storage",
