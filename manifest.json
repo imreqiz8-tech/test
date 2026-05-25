@@ -1,0 +1,36 @@
+{
+  "manifest_version": 3,
+  "name": "Авто-поднятие резюме hh.ru",
+  "version": "1.0.0",
+  "description": "Автоматически поднимает резюме на hh.ru каждые 4 часа.",
+  "default_locale": "ru",
+  "permissions": [
+    "alarms",
+    "storage",
+    "notifications",
+    "scripting"
+  ],
+  "host_permissions": [
+    "https://hh.ru/*",
+    "https://*.hh.ru/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Авто-поднятие резюме",
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://hh.ru/applicant/resumes*",
+        "https://hh.ru/resume/*",
+        "https://*.hh.ru/applicant/resumes*",
+        "https://*.hh.ru/resume/*"
+      ],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ]
+}
